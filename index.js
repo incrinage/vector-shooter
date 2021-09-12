@@ -58,7 +58,7 @@
       this.canvasElements = [];
       this.renderQueue = [];
       this.selectedInventory = selectedInventory;
-      this.structures = structures;
+      this.structureIcons = structures;
       this.troops = troops;
       this.init();
     }
@@ -71,22 +71,23 @@
       this.renderQueue.push(() => {
         structuresBtn.render(structuresBtnContainer.getContext());
       });
-      structuresBtnCanvas.addEventListener("click", () => {
+      const showInventory = () => {
         structuresBtnCanvas.classList.add("hidden");
         structuresCanvas.classList.remove("hidden");
-      });
+      };
+      structuresBtnCanvas.addEventListener("click", showInventory);
 
       const structuresContainer = new UICanvas(500, 100);
       const structuresCanvas = structuresContainer.getCanvas();
       structuresCanvas.classList.add("hidden");
       this.renderQueue.push(() => {
-        this.structures.render(structuresContainer.getContext());
+        this.structureIcons.render(structuresContainer.getContext());
       });
-      structuresCanvas.addEventListener("click", (e) => {
+      const buttonClickListener = (e) => {
         const canvasRect = structuresCanvas.getBoundingClientRect();
         const x = e.x - canvasRect.left;
         const y = e.y - canvasRect.top;
-        this.structures.forEach((i) => {
+        this.structureIcons.forEach((i) => {
           const [ix, iy] = i.getPosition();
           if (
             x >= ix &&
@@ -101,7 +102,9 @@
             }
           }
         });
-      });
+      };
+
+      structuresCanvas.addEventListener("click", buttonClickListener);
 
       this.canvasElements.push(structuresBtnCanvas);
       this.canvasElements.push(structuresCanvas);
@@ -181,7 +184,7 @@
       let mouseDownPoint = { x: 0, y: 0 };
       let mouseLocation = { x: 0, y: 0 };
 
-      const enablePanOnMouseMove = (e) => {
+      const enableScreenPan = (e) => {
         const canvasRect = this.canvas.getBoundingClientRect();
         let x = e.x - canvasRect.left;
         let y = e.y - canvasRect.top;
@@ -190,9 +193,11 @@
           mouseDownPoint = { x, y };
         }
       };
-      const disablePanOnMouseMove = () => {
+
+      const disableScreenPan = () => {
         ready = false;
       };
+
       const zoom = (e) => {
         if (e.deltaY > 0 && this.camera.scaleExponent !== -1) {
           this.ctx.scale(2, 2); // doubles the size of translation and drawn objects
@@ -203,9 +208,12 @@
         }
 
         this.camera.scale = Math.pow(2, this.camera.scaleExponent);
+
+        updateMouseLocation(e);
+        updateSelectedItemPosition();
       };
 
-      const panOnMouseDown = (e) => {
+      const panScreen = (e) => {
         if (ready) {
           const canvasRect = this.canvas.getBoundingClientRect();
           const x = e.x - canvasRect.left;
@@ -218,6 +226,7 @@
             x: xT * this.camera.scale,
             y: yT * this.camera.scale,
           };
+          
           //translate origin by xT, yT
           this.ctx.translate(scaledTranslation.x, scaledTranslation.y);
 
@@ -231,17 +240,14 @@
         }
       };
 
-      const showSelectedItemOnMouseMove = (e) => {
+      const updateSelectedItemPosition = (e) => {
         const selected = this.selectedInventory.getSelected();
-        const canvasRect = this.canvas.getBoundingClientRect();
-        e.x - canvasRect.left;
-        e.y - canvasRect.top;
         if (selected) {
           selected.setPosition([mouseLocation.x, mouseLocation.y]);
         }
       };
 
-      const setTranslatedMouseLocation = (e) => {
+      const updateMouseLocation = (e) => {
         const canvasRect = this.canvas.getBoundingClientRect();
         const x = e.x - canvasRect.left;
         const y = e.y - canvasRect.top;
@@ -254,12 +260,12 @@
           this.camera.cameraDeltaY * this.camera.scale;
       };
 
-      this.canvas.addEventListener("mousemove", setTranslatedMouseLocation);
-      this.canvas.addEventListener("mousemove", showSelectedItemOnMouseMove);
-      this.canvas.addEventListener("mousedown", enablePanOnMouseMove);
-      this.canvas.addEventListener("mouseup", disablePanOnMouseMove);
+      this.canvas.addEventListener("mousemove", updateMouseLocation);
+      this.canvas.addEventListener("mousemove", updateSelectedItemPosition);
+      this.canvas.addEventListener("mousedown", enableScreenPan);
+      this.canvas.addEventListener("mouseup", disableScreenPan);
       this.canvas.addEventListener("mousewheel", zoom);
-      this.canvas.addEventListener("mousemove", panOnMouseDown);
+      this.canvas.addEventListener("mousemove", panScreen);
     }
   }
 

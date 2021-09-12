@@ -61,7 +61,7 @@ export default class GameplayScreen {
     let mouseDownPoint = { x: 0, y: 0 };
     let mouseLocation = { x: 0, y: 0 };
 
-    const enablePanOnMouseMove = (e) => {
+    const enableScreenPan = (e) => {
       const canvasRect = this.canvas.getBoundingClientRect();
       let x = e.x - canvasRect.left;
       let y = e.y - canvasRect.top;
@@ -70,9 +70,11 @@ export default class GameplayScreen {
         mouseDownPoint = { x, y };
       }
     };
-    const disablePanOnMouseMove = () => {
+
+    const disableScreenPan = () => {
       ready = false;
     };
+
     const zoom = (e) => {
       if (e.deltaY > 0 && this.camera.scaleExponent !== -1) {
         this.ctx.scale(2, 2); // doubles the size of translation and drawn objects
@@ -83,9 +85,12 @@ export default class GameplayScreen {
       }
 
       this.camera.scale = Math.pow(2, this.camera.scaleExponent);
+
+      updateMouseLocation(e);
+      updateSelectedItemPosition();
     };
 
-    const panOnMouseDown = (e) => {
+    const panScreen = (e) => {
       if (ready) {
         const canvasRect = this.canvas.getBoundingClientRect();
         const x = e.x - canvasRect.left;
@@ -98,6 +103,7 @@ export default class GameplayScreen {
           x: xT * this.camera.scale,
           y: yT * this.camera.scale,
         };
+        
         //translate origin by xT, yT
         this.ctx.translate(scaledTranslation.x, scaledTranslation.y);
 
@@ -111,17 +117,14 @@ export default class GameplayScreen {
       }
     };
 
-    const showSelectedItemOnMouseMove = (e) => {
+    const updateSelectedItemPosition = (e) => {
       const selected = this.selectedInventory.getSelected();
-      const canvasRect = this.canvas.getBoundingClientRect();
-      const x = e.x - canvasRect.left;
-      const y = e.y - canvasRect.top;
       if (selected) {
         selected.setPosition([mouseLocation.x, mouseLocation.y]);
       }
     };
 
-    const setTranslatedMouseLocation = (e) => {
+    const updateMouseLocation = (e) => {
       const canvasRect = this.canvas.getBoundingClientRect();
       const x = e.x - canvasRect.left;
       const y = e.y - canvasRect.top;
@@ -134,11 +137,11 @@ export default class GameplayScreen {
         this.camera.cameraDeltaY * this.camera.scale;
     };
 
-    this.canvas.addEventListener("mousemove", setTranslatedMouseLocation);
-    this.canvas.addEventListener("mousemove", showSelectedItemOnMouseMove);
-    this.canvas.addEventListener("mousedown", enablePanOnMouseMove);
-    this.canvas.addEventListener("mouseup", disablePanOnMouseMove);
+    this.canvas.addEventListener("mousemove", updateMouseLocation);
+    this.canvas.addEventListener("mousemove", updateSelectedItemPosition);
+    this.canvas.addEventListener("mousedown", enableScreenPan);
+    this.canvas.addEventListener("mouseup", disableScreenPan);
     this.canvas.addEventListener("mousewheel", zoom);
-    this.canvas.addEventListener("mousemove", panOnMouseDown);
+    this.canvas.addEventListener("mousemove", panScreen);
   }
 }

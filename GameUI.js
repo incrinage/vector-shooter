@@ -6,7 +6,7 @@ export default class GameUI {
     this.canvasElements = [];
     this.renderQueue = [];
     this.selectedInventory = selectedInventory;
-    this.structures = structures;
+    this.structureIcons = structures;
     this.troops = troops;
     this.init();
   }
@@ -19,22 +19,23 @@ export default class GameUI {
     this.renderQueue.push(() => {
       structuresBtn.render(structuresBtnContainer.getContext());
     });
-    structuresBtnCanvas.addEventListener("click", () => {
+    const showInventory = () => {
       structuresBtnCanvas.classList.add("hidden");
       structuresCanvas.classList.remove("hidden");
-    });
+    };
+    structuresBtnCanvas.addEventListener("click", showInventory);
 
     const structuresContainer = new UICanvas(500, 100);
     const structuresCanvas = structuresContainer.getCanvas();
     structuresCanvas.classList.add("hidden");
     this.renderQueue.push(() => {
-      this.structures.render(structuresContainer.getContext());
+      this.structureIcons.render(structuresContainer.getContext());
     });
-    structuresCanvas.addEventListener("click", (e) => {
+    const buttonClickListener = (e) => {
       const canvasRect = structuresCanvas.getBoundingClientRect();
       const x = e.x - canvasRect.left;
       const y = e.y - canvasRect.top;
-      this.structures.forEach((i) => {
+      this.structureIcons.forEach((i) => {
         const [ix, iy] = i.getPosition();
         if (
           x >= ix &&
@@ -49,7 +50,9 @@ export default class GameUI {
           }
         }
       });
-    });
+    };
+
+    structuresCanvas.addEventListener("click", buttonClickListener);
 
     this.canvasElements.push(structuresBtnCanvas);
     this.canvasElements.push(structuresCanvas);
