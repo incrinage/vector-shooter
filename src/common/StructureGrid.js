@@ -1,44 +1,73 @@
-import angle from "./MathUtil";
+import angle from "../util/MathUtil";
 
-export default class BuildingGrid {
-  constructor(width = 1, height = 1, squareSize = 1) {
-    this.width = width;
-    this.height = height;
-    this.squareSize = squareSize;
-
-    //initialize grid positions with empty arrays of objects
-    this.grid = Array(Math.floor(width / squareSize));
-    this.grid.forEach((col) => {
-      col = Array(Math.floor(height / squareSize));
-    });
+export default class StructureGrid {
+  constructor(cellSideLength = 1, boundaries = [-1, 2, -1, 2]) {
+    this.cellSideLength = cellSideLength;
+    this.origin = origin;
+    this.boundaries = boundaries;
+    this.gridLocations = [];
   }
 
   /**
-   * Returns the coordinate of the square
-   * the parameters lie on
-   *
+   * Returns the nearest coordinate on the grid from the
+   * provided coordinate
    *
    * @param {number} x
    * @param {number} y
    * @return {number[]}
    */
-  getPosition([x, y]) {
-    return [Math.floor(x / this.squareSize), Math.floor(y / this.squareSize)];
+  getGridCoordinate([x, y]) {
+    return [
+      Math.floor(x / this.cellSideLength) * this.cellSideLength,
+      Math.floor(y / this.cellSideLength) * this.cellSideLength,
+    ];
   }
 
   /**
-   * Add an object to the grid
-   * by passing a coordinate within the grid's
-   * dimensions
+   * Mark a space on the grid
    * @param {*} x
    * @param {*} y
    */
-  add([x, y], o) {
-    const [xg, yg] = this.getPosition(x, y);
-    this.grid[xg][yg] = o;
-    this.grid[xg + o];
+  add(coordinate, marker) {
+    this.gridLocations.push({ coordinate, marker });
   }
-  
+
+  remove([x, y]) {
+    this.gridLocations = this.gridLocations.filter((c) => {
+      const { coordinate, marker } = c;
+      const [xc, yc] = coordinate;
+      if (xc != x || yc != y) {
+        return true;
+      }
+      return false;
+    });
+  }
+
+  isValidGridCoordinate([x, y]) {
+    if (x % this.cellSideLength != 0 || y % this.cellSideLength != 0) {
+      return false;
+    }
+    const [left, right, top, bottom] = this.boundaries;
+    if (x < left || x > right || y < top || y > bottom) {
+      return false;
+    }
+
+    return true;
+  }
+
+  isOccupied([x, y]) {
+    let isOccupied = false;
+    this.gridLocations.forEach((c) => {
+      const { coordinate, marker } = c;
+      const [xc, yc] = coordinate;
+      if (xc == x && yc == y) {
+        isOccupied = true;
+        return;
+      }
+    });
+    return isOccupied;
+  }
+
   /**
    * Generates a path using the provided rules for
    * objects in the grid
@@ -48,11 +77,11 @@ export default class BuildingGrid {
    * @param {Map<Class,Predicate>} pathRules
    */
   getPath(start, end, pathRules) {
-    const [x0, y0] = this.getPosition(start);
-    const [xf, yf] = this.getPosition(end);
+    const [x0, y0] = this.getGridCoordinate(start);
+    const [xf, yf] = this.getGridCoordinate(end);
 
     return [xf - x0, yf - f0, angle([x0, y0], [xf, yf])];
   }
 
-  draw() {}
+  render(ctx) {}
 }

@@ -2,17 +2,18 @@
   'use strict';
 
   class Button {
-    constructor([x = 0, y = 0], width, height) {
+    constructor([x = 0, y = 0], width, height, color, text) {
       this.position = [x, y];
       this.width = width;
       this.height = height;
-      this.color = "#a3e4f7";
-      this.text = "Inventory";
+      this.color = color;
+      this.text = text;
     }
 
     getWidth() {
       return this.width;
     }
+
     getHeight() {
       return this.height;
     }
@@ -30,8 +31,19 @@
       ctx.fillStyle = this.color;
       ctx.fillRect(x, y, this.width, this.height);
 
+      this.renderText(ctx);
+    }
+
+    renderText(ctx) {
+      const [x, y] = this.position;
       ctx.strokeStyle = "black";
-      ctx.strokeText(this.text, x + 2, y + this.height / 2);
+      ctx.strokeText(this.text, x, y + this.getHeight() / 2);
+    }
+  }
+
+  class InventoryButton extends Button {
+    constructor([x = 0, y = 0], width, height) {
+      super([x, y], width, height, "#a3e4f7", "Inventory");
     }
   }
 
@@ -50,235 +62,6 @@
 
     getContext() {
       return this.ctx;
-    }
-  }
-
-  class GameUI {
-    constructor(selectedInventory, structures, troops) {
-      this.canvasElements = [];
-      this.renderQueue = [];
-      this.selectedInventory = selectedInventory;
-      this.structureIcons = structures;
-      this.troops = troops;
-      this.init();
-    }
-
-    init() {
-      const structuresBtn = new Button([0, 0], 50, 50);
-      const structuresBtnContainer = new UICanvas(50, 50);
-      const structuresBtnCanvas = structuresBtnContainer.getCanvas();
-      structuresBtnCanvas.classList.add("inventory-btn");
-      this.renderQueue.push(() => {
-        structuresBtn.render(structuresBtnContainer.getContext());
-      });
-      const showInventory = () => {
-        structuresBtnCanvas.classList.add("hidden");
-        structuresCanvas.classList.remove("hidden");
-      };
-      structuresBtnCanvas.addEventListener("click", showInventory);
-
-      const structuresContainer = new UICanvas(500, 100);
-      const structuresCanvas = structuresContainer.getCanvas();
-      structuresCanvas.classList.add("hidden");
-      this.renderQueue.push(() => {
-        this.structureIcons.render(structuresContainer.getContext());
-      });
-      const buttonClickListener = (e) => {
-        const canvasRect = structuresCanvas.getBoundingClientRect();
-        const x = e.x - canvasRect.left;
-        const y = e.y - canvasRect.top;
-        this.structureIcons.forEach((i) => {
-          const [ix, iy] = i.getPosition();
-          if (
-            x >= ix &&
-            ix <= x + i.getWidth() &&
-            y >= iy &&
-            iy <= y + i.getHeight()
-          ) {
-            if (this.selectedInventory.getSelected() instanceof i.getClass()) {
-              this.selectedInventory.setSelected(undefined);
-            } else {
-              this.selectedInventory.setSelected(i.getObject());
-            }
-          }
-        });
-      };
-
-      structuresCanvas.addEventListener("click", buttonClickListener);
-
-      this.canvasElements.push(structuresBtnCanvas);
-      this.canvasElements.push(structuresCanvas);
-    }
-
-    getAllCanvasElements() {
-      return this.canvasElements;
-    }
-
-    render() {
-      this.renderQueue.forEach((fn) => {
-        fn();
-      });
-    }
-  }
-
-  class GameplayScreen {
-    constructor(selectedInventory) {
-      this.canvas = document.createElement("canvas");
-      this.ctx = this.canvas.getContext("2d", { alpha: false });
-      this.canvas.width = 1000;
-      this.canvas.height = 1000;
-      this.canvas.className = "gameplayScreen";
-      this.camera = {
-        cameraDeltaX: 0,
-        cameraDeltaY: 0,
-        scale: 1,
-        scaleExponent: 0,
-      };
-
-      //center coordinate system
-      this.ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
-      this.selectedInventory = selectedInventory;
-      this.initScreenListeners();
-    }
-
-    getCanvas() {
-      return this.canvas;
-    }
-
-    getContext() {
-      return this.ctx;
-    }
-
-    clearScreen() {
-      const { x, y } = {
-        x:
-          (-this.canvas.width * this.camera.scale) / 2 -
-          this.camera.cameraDeltaX * this.camera.scale,
-        y:
-          (-this.canvas.height * this.camera.scale) / 2 -
-          this.camera.cameraDeltaY * this.camera.scale,
-      };
-
-      //update line width
-      this.ctx.lineWidth = 1 * this.camera.scale;
-
-      //clear only what is visible
-      this.ctx.clearRect(
-        x,
-        y,
-        this.canvas.width * this.camera.scale,
-        this.canvas.height * this.camera.scale
-      );
-    }
-
-    render() {
-      this.clearScreen();
-      const selected = this.selectedInventory.getSelected();
-      if (selected) {
-        selected.render(this.ctx);
-      }
-    }
-
-    initScreenListeners() {
-      let ready = false;
-      let mouseDownPoint = { x: 0, y: 0 };
-      let mouseLocation = { x: 0, y: 0 };
-
-      const enableScreenPan = (e) => {
-        const canvasRect = this.canvas.getBoundingClientRect();
-        let x = e.x - canvasRect.left;
-        let y = e.y - canvasRect.top;
-        if (x > 0 && x < this.canvas.width && y > 0 && y < this.canvas.height) {
-          ready = true;
-          mouseDownPoint = { x, y };
-        }
-      };
-
-      const disableScreenPan = () => {
-        ready = false;
-      };
-
-      const zoom = (e) => {
-        if (e.deltaY > 0 && this.camera.scaleExponent !== -1) {
-          this.ctx.scale(2, 2); // doubles the size of translation and drawn objects
-          this.camera.scaleExponent -= 1; //scale down translations by a power of 2
-        } else if (e.deltaY < 0 && this.camera.scaleExponent !== 2) {
-          this.ctx.scale(0.5, 0.5); // halves the size of translations and drawn objects
-          this.camera.scaleExponent += 1; //scale up translations by a power of 2
-        }
-
-        this.camera.scale = Math.pow(2, this.camera.scaleExponent);
-
-        updateMouseLocation(e);
-        updateSelectedItemPosition();
-      };
-
-      const panScreen = (e) => {
-        if (ready) {
-          const canvasRect = this.canvas.getBoundingClientRect();
-          const x = e.x - canvasRect.left;
-          const y = e.y - canvasRect.top;
-          const xT = x - mouseDownPoint.x;
-          const yT = y - mouseDownPoint.y;
-
-          //scale the translation to accomadate to the zoom
-          const scaledTranslation = {
-            x: xT * this.camera.scale,
-            y: yT * this.camera.scale,
-          };
-          
-          //translate origin by xT, yT
-          this.ctx.translate(scaledTranslation.x, scaledTranslation.y);
-
-          //translate the mouse down point
-          mouseDownPoint.x += xT;
-          mouseDownPoint.y += yT;
-
-          //capture total translation to clear canvas viewport
-          this.camera.cameraDeltaX += xT;
-          this.camera.cameraDeltaY += yT;
-        }
-      };
-
-      const updateSelectedItemPosition = (e) => {
-        const selected = this.selectedInventory.getSelected();
-        if (selected) {
-          selected.setPosition([mouseLocation.x, mouseLocation.y]);
-        }
-      };
-
-      const updateMouseLocation = (e) => {
-        const canvasRect = this.canvas.getBoundingClientRect();
-        const x = e.x - canvasRect.left;
-        const y = e.y - canvasRect.top;
-
-        mouseLocation.x =
-          (x - this.canvas.width / 2) * this.camera.scale -
-          this.camera.cameraDeltaX * this.camera.scale;
-        mouseLocation.y =
-          (y - this.canvas.height / 2) * this.camera.scale -
-          this.camera.cameraDeltaY * this.camera.scale;
-      };
-
-      this.canvas.addEventListener("mousemove", updateMouseLocation);
-      this.canvas.addEventListener("mousemove", updateSelectedItemPosition);
-      this.canvas.addEventListener("mousedown", enableScreenPan);
-      this.canvas.addEventListener("mouseup", disableScreenPan);
-      this.canvas.addEventListener("mousewheel", zoom);
-      this.canvas.addEventListener("mousemove", panScreen);
-    }
-  }
-
-  class SelectedInventory {
-    constructor() {
-      this.selectedItem = undefined;
-    }
-
-    getSelected() {
-      return this.selectedItem;
-    }
-    setSelected(s) {
-      this.selectedItem = s;
     }
   }
 
@@ -441,7 +224,7 @@
     constructor(
       position = [0, 0, 0],
       velocity = [0, 0, 0],
-      radius = 5,
+      radius = 32,
       mass = radius
     ) {
       super(position, velocity, radius, mass);
@@ -456,6 +239,9 @@
 
     getHeight() {
       return this.radius * 2;
+    }
+    setPosition([x, y]) {
+      super.setPosition([x + this.radius, y + this.radius]);
     }
 
     //returns a bullet with the assigned position
@@ -529,46 +315,6 @@
     }
   }
 
-  class IconList {
-    constructor(position, width, height) {
-      this.position = position;
-      this.width = width;
-      this.height = height;
-      this.icons = [];
-    }
-
-    add(item) {
-      this.icons.push(item);
-      const [x, y] = this.position;
-      let space = 5;
-
-      this.icons.forEach((i) => {
-        i.setPosition([x + space, y + this.height / 2 - i.getHeight() / 2]); //center of inventory container
-        space += i.getWidth() + 5;
-      });
-    }
-    getWidth() {
-      return this.width;
-    }
-
-    getHeight() {
-      return this.height;
-    }
-
-    forEach(fn) {
-      this.icons.forEach(fn);
-    }
-
-    render(ctx) {
-      const [x, y] = this.position;
-      ctx.strokeRect(x, y, this.width, this.height);
-
-      this.icons.forEach((i) => {
-        i.render(ctx);
-      });
-    }
-  }
-
   class Icon {
     /**
      * Creates an Icon representing an object that can be created
@@ -614,12 +360,498 @@
     }
   }
 
+  class IconList {
+    constructor(position, width, height) {
+      this.position = position;
+      this.width = width;
+      this.height = height;
+      this.icons = [];
+    }
+
+    add(item) {
+      this.icons.push(item);
+    }
+
+    getWidth() {
+      return this.width;
+    }
+
+    getHeight() {
+      return this.height;
+    }
+
+    forEach(fn) {
+      this.icons.forEach(fn);
+    }
+
+    render(ctx) {
+      const [x, y] = this.position;
+      let space = 5;
+      this.icons.forEach((i) => {
+        i.setPosition([x + space, y + this.height / 2 - i.getHeight() / 2]); //center of inventory container
+        space += i.getWidth() + 5;
+      });
+      this.icons.forEach((i) => {
+        i.render(ctx);
+      });
+    }
+  }
+
+  class StructureUI {
+    constructor(selectedInventory) {
+      this.container = new UICanvas(512, 128);
+
+      this.structureIcons = new IconList([0, 0], 500, 100);
+      this.structureIcons.add(new Icon(Turret));
+      this.selectedInventory = selectedInventory;
+
+      this.closeBtn = new Button([470, 0], 30, 30, "gray", "X");
+
+      const canvas = this.container.getCanvas();
+      canvas.classList.add("structure-ui");
+      canvas.classList.add("hidden");
+
+      this.onCloseButtonClick = this.onCloseButtonClick.bind(this);
+      this.iconClick = this.iconClick.bind(this);
+
+      canvas.addEventListener("click", this.onCloseButtonClick.bind(this));
+      canvas.addEventListener("click", this.iconClick.bind(this));
+    }
+
+    onCloseButtonClick(e) {
+      const canvas = this.container.getCanvas();
+      const canvasRect = canvas.getBoundingClientRect();
+      const x = e.x - canvasRect.left;
+      const y = e.y - canvasRect.top;
+      const [ix, iy] = this.closeBtn.getPosition();
+      if (
+        x >= ix &&
+        x <= ix + this.closeBtn.getWidth() &&
+        y >= iy &&
+        y <= iy + this.closeBtn.getHeight()
+      ) {
+        canvas.classList.add("hidden");
+        this.selectedInventory.reset();
+      }
+    }
+
+    iconClick(e) {
+      const canvas = this.container.getCanvas();
+      const canvasRect = canvas.getBoundingClientRect();
+      const x = e.x - canvasRect.left;
+      const y = e.y - canvasRect.top;
+      this.structureIcons.forEach((i) => {
+        const [ix, iy] = i.getPosition();
+        if (
+          x >= ix &&
+          x <= ix + i.getWidth() &&
+          y >= iy &&
+          y <= iy + i.getHeight()
+        ) {
+          if (this.selectedInventory.getSelected() instanceof i.getClass()) {
+            this.selectedInventory.setSelected(undefined);
+            this.selectedInventory.ready = false;
+          } else {
+            this.selectedInventory.setSelected(i.getObject());
+            this.selectedInventory.ready = true;
+          }
+        }
+      });
+    }
+
+    getCanvas() {
+      return this.container.getCanvas();
+    }
+
+    render() {
+      const ctx = this.container.getContext();
+      this.closeBtn.render(ctx);
+      this.structureIcons.render(ctx);
+    }
+  }
+
+  class GameUI {
+    constructor(selectedInventory) {
+      this.canvasElements = [];
+      this.renderQueue = [];
+      this.selectedInventory = selectedInventory;
+
+      this.structureUI = new StructureUI(selectedInventory);
+      this.init();
+    }
+
+    init() {
+      const structuresBtn = new InventoryButton([0, 0], 50, 50);
+      const structuresBtnContainer = new UICanvas(50, 50);
+      const structuresBtnCanvas = structuresBtnContainer.getCanvas();
+      structuresBtnCanvas.classList.add("inventory-btn");
+      this.renderQueue.push({
+        render: () => {
+          structuresBtn.render(structuresBtnContainer.getContext());
+        },
+      });
+
+      const showInventory = () => {
+        this.structureUI.getCanvas().classList.remove("hidden");
+      };
+      structuresBtnCanvas.addEventListener("click", showInventory);
+
+      this.canvasElements.push(structuresBtnCanvas);
+      this.canvasElements.push(this.structureUI.getCanvas());
+    }
+
+    getAllCanvasElements() {
+      return this.canvasElements;
+    }
+
+    render() {
+      this.renderQueue.forEach((o) => {
+        o.render();
+      });
+
+      this.structureUI.render();
+    }
+  }
+
+  class SelectedInventory {
+    constructor() {
+      this.selectedItem = undefined;
+      this.ready = false;
+    }
+
+    getSelected() {
+      return this.selectedItem;
+    }
+    setSelected(s) {
+      this.selectedItem = s;
+    }
+
+    reset() {
+      this.selectedItem = undefined;
+      this.ready = false;
+    }
+  }
+
+  class StructureGrid {
+    constructor(cellSideLength = 1, boundaries = [-1, 2, -1, 2]) {
+      this.cellSideLength = cellSideLength;
+      this.origin = origin;
+      this.boundaries = boundaries;
+      this.gridLocations = [];
+    }
+
+    /**
+     * Returns the nearest coordinate on the grid from the
+     * provided coordinate
+     *
+     * @param {number} x
+     * @param {number} y
+     * @return {number[]}
+     */
+    getGridCoordinate([x, y]) {
+      return [
+        Math.floor(x / this.cellSideLength) * this.cellSideLength,
+        Math.floor(y / this.cellSideLength) * this.cellSideLength,
+      ];
+    }
+
+    /**
+     * Mark a space on the grid
+     * @param {*} x
+     * @param {*} y
+     */
+    add(coordinate, marker) {
+      this.gridLocations.push({ coordinate, marker });
+    }
+
+    remove([x, y]) {
+      this.gridLocations = this.gridLocations.filter((c) => {
+        const { coordinate, marker } = c;
+        const [xc, yc] = coordinate;
+        if (xc != x || yc != y) {
+          return true;
+        }
+        return false;
+      });
+    }
+
+    isValidGridCoordinate([x, y]) {
+      if (x % this.cellSideLength != 0 || y % this.cellSideLength != 0) {
+        return false;
+      }
+      const [left, right, top, bottom] = this.boundaries;
+      if (x < left || x > right || y < top || y > bottom) {
+        return false;
+      }
+
+      return true;
+    }
+
+    isOccupied([x, y]) {
+      let isOccupied = false;
+      this.gridLocations.forEach((c) => {
+        const { coordinate, marker } = c;
+        const [xc, yc] = coordinate;
+        if (xc == x && yc == y) {
+          isOccupied = true;
+          return;
+        }
+      });
+      return isOccupied;
+    }
+
+    /**
+     * Generates a path using the provided rules for
+     * objects in the grid
+     *
+     * @param {number[]} start
+     * @param {number[]} end
+     * @param {Map<Class,Predicate>} pathRules
+     */
+    getPath(start, end, pathRules) {
+      const [x0, y0] = this.getGridCoordinate(start);
+      const [xf, yf] = this.getGridCoordinate(end);
+
+      return [xf - x0, yf - f0, angle$1([x0, y0], [xf, yf])];
+    }
+
+    render(ctx) {}
+  }
+
+  class GameplayScreen {
+    constructor(selectedInventory) {
+      this.canvas = document.createElement("canvas");
+      this.ctx = this.canvas.getContext("2d", { alpha: false });
+      this.canvas.width = 1024;
+      this.canvas.height = 1024;
+      this.canvas.className = "gameplayScreen";
+      this.camera = {
+        cameraDeltaX: 0,
+        cameraDeltaY: 0,
+        scale: 1,
+        scaleExponent: 0,
+      };
+      this.origin = [0, 0];
+      this.renderQueue = [];
+      const cellLen = 32;
+      this.grid = new StructureGrid(cellLen, [
+        cellLen * -16,
+        cellLen * 16,
+        cellLen * -16,
+        cellLen * 16,
+      ]);
+
+      //center coordinate system
+      const [x, y] = this.origin;
+      this.ctx.translate(x, y);
+      this.selectedInventory = selectedInventory;
+      this.initScreenListeners();
+    }
+
+    getCanvas() {
+      return this.canvas;
+    }
+
+    getContext() {
+      return this.ctx;
+    }
+
+    clearScreen(xOrigin, yOrigin) {
+      //scale
+      const { x, y } = {
+        x:
+          xOrigin * this.camera.scale -
+          this.camera.cameraDeltaX * this.camera.scale,
+        y:
+          yOrigin * this.camera.scale -
+          this.camera.cameraDeltaY * this.camera.scale,
+      };
+
+      //update line width
+      this.ctx.lineWidth = 1 * this.camera.scale;
+
+      //clear only what is visible
+      this.ctx.clearRect(
+        x,
+        y,
+        this.canvas.width * this.camera.scale,
+        this.canvas.height * this.camera.scale
+      );
+    }
+
+    render() {
+      const [x, y] = this.origin;
+      this.clearScreen(x, y);
+      const selected = this.selectedInventory.getSelected();
+      if (selected && this.selectedInventory.ready) {
+        selected.render(this.ctx);
+      }
+
+      this.grid.render(this.ctx);
+      this.renderQueue.forEach((o) => o.render(this.ctx));
+    }
+
+    initScreenListeners() {
+      let ready = false;
+      let mouseDownPoint = { x: 0, y: 0 };
+      let mouseLocation = { x: 0, y: 0 };
+
+      const enableScreenPan = (e) => {
+        const canvasRect = this.canvas.getBoundingClientRect();
+        let x = e.x - canvasRect.left;
+        let y = e.y - canvasRect.top;
+        if (x > 0 && x < this.canvas.width && y > 0 && y < this.canvas.height) {
+          ready = true;
+          mouseDownPoint = { x, y };
+        }
+      };
+
+      const disableScreenPan = () => {
+        ready = false;
+      };
+
+      const zoom = (e) => {
+        if (e.deltaY > 0 && this.camera.scaleExponent !== -1) {
+          this.ctx.scale(2, 2); // doubles the size of translation and drawn objects
+          this.camera.scaleExponent -= 1; //scale down translations by a power of 2
+        } else if (e.deltaY < 0 && this.camera.scaleExponent !== 2) {
+          this.ctx.scale(0.5, 0.5); // halves the size of translations and drawn objects
+          this.camera.scaleExponent += 1; //scale up translations by a power of 2
+        }
+
+        this.camera.scale = Math.pow(2, this.camera.scaleExponent);
+
+        updateMouseLocation(e);
+        updateSelectedItemPosition();
+      };
+
+      const panScreen = (e) => {
+        if (ready) {
+          const canvasRect = this.canvas.getBoundingClientRect();
+          const x = e.x - canvasRect.left;
+          const y = e.y - canvasRect.top;
+          const xT = x - mouseDownPoint.x;
+          const yT = y - mouseDownPoint.y;
+
+          //scale the translation to accomadate to the zoom
+          const scaledTranslation = {
+            x: xT * this.camera.scale,
+            y: yT * this.camera.scale,
+          };
+
+          //translate origin by xT, yT
+          this.ctx.translate(scaledTranslation.x, scaledTranslation.y);
+
+          //translate the mouse down point
+          mouseDownPoint.x += xT;
+          mouseDownPoint.y += yT;
+
+          //capture total translation to clear canvas viewport
+          this.camera.cameraDeltaX += xT;
+          this.camera.cameraDeltaY += yT;
+        }
+      };
+
+      const updateSelectedItemPosition = (e) => {
+        const selected = this.selectedInventory.getSelected();
+        if (selected) {
+          selected.setPosition(
+            this.grid.getGridCoordinate([mouseLocation.x, mouseLocation.y])
+          );
+        }
+      };
+
+      const updateMouseLocation = (e) => {
+        const canvasRect = this.canvas.getBoundingClientRect();
+        const x = e.x - canvasRect.left;
+        const y = e.y - canvasRect.top;
+        const [xo, yo] = this.origin;
+        mouseLocation.x =
+          (x - xo) * this.camera.scale -
+          this.camera.cameraDeltaX * this.camera.scale;
+        mouseLocation.y =
+          (y - yo) * this.camera.scale -
+          this.camera.cameraDeltaY * this.camera.scale;
+      };
+
+      this.canvas.addEventListener("mousemove", updateMouseLocation);
+      this.canvas.addEventListener("mousemove", updateSelectedItemPosition);
+      this.canvas.addEventListener("mousedown", enableScreenPan);
+      this.canvas.addEventListener("mouseup", disableScreenPan);
+      this.canvas.addEventListener("mousewheel", zoom);
+      this.canvas.addEventListener("mousemove", panScreen);
+      this.canvas.addEventListener("mousemove", (e) => {
+        const selected = this.selectedInventory.getSelected();
+        if (selected) {
+          this.selectedInventory.ready = true;
+        }
+      });
+      const getOccupiedCells = (coordinate, width, height, len) => {
+        const [x, y] = coordinate;
+
+        let xEnd = x + width;
+        let yEnd = y + height;
+
+        const result = [];
+        for (let i = x; i < xEnd; i += len) {
+          for (let j = y; j < yEnd; j += len) {
+            result.push([i, j]);
+          }
+        }
+        return result;
+      };
+
+      const isOccupied = (coordinates) => {
+        let result = false;
+
+        coordinates.forEach((c) => {
+          const [cx, cy] = c;
+
+          if (this.grid.isOccupied([cx, cy])) {
+            result = true;
+            return;
+          }
+        });
+        return result;
+      };
+
+      this.canvas.addEventListener("click", (e) => {
+        const selected = this.selectedInventory.getSelected();
+        if (selected) {
+          const gridLocation = this.grid.getGridCoordinate([
+            mouseLocation.x,
+            mouseLocation.y,
+          ]);
+
+          const coordinates = getOccupiedCells(
+            gridLocation,
+            selected.getWidth(),
+            selected.getHeight(),
+            this.grid.cellSideLength
+          );
+
+          let isValid = false;
+          coordinates.forEach((c) => {
+            if (this.grid.isValidGridCoordinate(c)) {
+              isValid = true;
+              return;
+            }
+          });
+
+          if (!isOccupied(coordinates) && isValid) {
+            coordinates.forEach((c) => {
+              this.grid.add(c, 0);
+            });
+            this.renderQueue.push(selected);
+            this.selectedInventory.reset();
+          }
+        }
+      });
+    }
+  }
+
   const selectedInventory = new SelectedInventory();
-
-  const structureList = new IconList([0, 0], 500, 100);
-  structureList.add(new Icon(Turret));
-
-  const gameUI = new GameUI(selectedInventory, structureList);
+  const gameUI = new GameUI(selectedInventory);
   const gameplayScreen = new GameplayScreen(selectedInventory);
 
   function render() {

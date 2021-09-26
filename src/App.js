@@ -1,15 +1,9 @@
-import GameUI from "./GameUI.js";
-import GameplayScreen from "./GameplayScreen";
+import GameUI from "./ui/GameUI.js";
 import SelectedInventory from "./SelectedInventory";
-import Turret from "./src/actor/Turret.js";
-import IconList from "./src/common/IconList.js";
-import Icon from "./src/common/Icon.js";
+import GameplayScreen from "./ui/GameplayScreen.js";
+
 const selectedInventory = new SelectedInventory();
-
-const structureList = new IconList([0, 0], 500, 100);
-structureList.add(new Icon(Turret));
-
-const gameUI = new GameUI(selectedInventory, structureList);
+const gameUI = new GameUI(selectedInventory);
 const gameplayScreen = new GameplayScreen(selectedInventory);
 
 function render() {

@@ -1,9 +1,11 @@
+import StructureGrid from "../common/StructureGrid";
+
 export default class GameplayScreen {
   constructor(selectedInventory) {
     this.canvas = document.createElement("canvas");
     this.ctx = this.canvas.getContext("2d", { alpha: false });
-    this.canvas.width = 1000;
-    this.canvas.height = 1000;
+    this.canvas.width = 1024;
+    this.canvas.height = 1024;
     this.canvas.className = "gameplayScreen";
     this.camera = {
       cameraDeltaX: 0,
@@ -11,9 +13,19 @@ export default class GameplayScreen {
       scale: 1,
       scaleExponent: 0,
     };
+    this.origin = [0, 0];
+    this.renderQueue = [];
+    const cellLen = 32;
+    this.grid = new StructureGrid(cellLen, [
+      cellLen * -16,
+      cellLen * 16,
+      cellLen * -16,
+      cellLen * 16,
+    ]);
 
     //center coordinate system
-    this.ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
+    const [x, y] = this.origin;
+    this.ctx.translate(x, y);
     this.selectedInventory = selectedInventory;
     this.initScreenListeners();
   }
@@ -26,13 +38,14 @@ export default class GameplayScreen {
     return this.ctx;
   }
 
-  clearScreen() {
+  clearScreen(xOrigin, yOrigin) {
+    //scale
     const { x, y } = {
       x:
-        (-this.canvas.width * this.camera.scale) / 2 -
+        xOrigin * this.camera.scale -
         this.camera.cameraDeltaX * this.camera.scale,
       y:
-        (-this.canvas.height * this.camera.scale) / 2 -
+        yOrigin * this.camera.scale -
         this.camera.cameraDeltaY * this.camera.scale,
     };
 
@@ -49,11 +62,15 @@ export default class GameplayScreen {
   }
 
   render() {
-    this.clearScreen();
+    const [x, y] = this.origin;
+    this.clearScreen(x, y);
     const selected = this.selectedInventory.getSelected();
-    if (selected) {
+    if (selected && this.selectedInventory.ready) {
       selected.render(this.ctx);
     }
+
+    this.grid.render(this.ctx);
+    this.renderQueue.forEach((o) => o.render(this.ctx));
   }
 
   initScreenListeners() {
@@ -103,7 +120,7 @@ export default class GameplayScreen {
           x: xT * this.camera.scale,
           y: yT * this.camera.scale,
         };
-        
+
         //translate origin by xT, yT
         this.ctx.translate(scaledTranslation.x, scaledTranslation.y);
 
@@ -120,7 +137,9 @@ export default class GameplayScreen {
     const updateSelectedItemPosition = (e) => {
       const selected = this.selectedInventory.getSelected();
       if (selected) {
-        selected.setPosition([mouseLocation.x, mouseLocation.y]);
+        selected.setPosition(
+          this.grid.getGridCoordinate([mouseLocation.x, mouseLocation.y])
+        );
       }
     };
 
@@ -128,12 +147,12 @@ export default class GameplayScreen {
       const canvasRect = this.canvas.getBoundingClientRect();
       const x = e.x - canvasRect.left;
       const y = e.y - canvasRect.top;
-
+      const [xo, yo] = this.origin;
       mouseLocation.x =
-        (x - this.canvas.width / 2) * this.camera.scale -
+        (x - xo) * this.camera.scale -
         this.camera.cameraDeltaX * this.camera.scale;
       mouseLocation.y =
-        (y - this.canvas.height / 2) * this.camera.scale -
+        (y - yo) * this.camera.scale -
         this.camera.cameraDeltaY * this.camera.scale;
     };
 
@@ -143,5 +162,72 @@ export default class GameplayScreen {
     this.canvas.addEventListener("mouseup", disableScreenPan);
     this.canvas.addEventListener("mousewheel", zoom);
     this.canvas.addEventListener("mousemove", panScreen);
+    this.canvas.addEventListener("mousemove", (e) => {
+      const selected = this.selectedInventory.getSelected();
+      if (selected) {
+        this.selectedInventory.ready = true;
+      }
+    });
+    const getOccupiedCells = (coordinate, width, height, len) => {
+      const [x, y] = coordinate;
+
+      let xEnd = x + width;
+      let yEnd = y + height;
+
+      const result = [];
+      for (let i = x; i < xEnd; i += len) {
+        for (let j = y; j < yEnd; j += len) {
+          result.push([i, j]);
+        }
+      }
+      return result;
+    };
+
+    const isOccupied = (coordinates) => {
+      let result = false;
+
+      coordinates.forEach((c) => {
+        const [cx, cy] = c;
+
+        if (this.grid.isOccupied([cx, cy])) {
+          result = true;
+          return;
+        }
+      });
+      return result;
+    };
+
+    this.canvas.addEventListener("click", (e) => {
+      const selected = this.selectedInventory.getSelected();
+      if (selected) {
+        const gridLocation = this.grid.getGridCoordinate([
+          mouseLocation.x,
+          mouseLocation.y,
+        ]);
+
+        const coordinates = getOccupiedCells(
+          gridLocation,
+          selected.getWidth(),
+          selected.getHeight(),
+          this.grid.cellSideLength
+        );
+
+        let isValid = false;
+        coordinates.forEach((c) => {
+          if (this.grid.isValidGridCoordinate(c)) {
+            isValid = true;
+            return;
+          }
+        });
+
+        if (!isOccupied(coordinates) && isValid) {
+          coordinates.forEach((c) => {
+            this.grid.add(c, 0);
+          });
+          this.renderQueue.push(selected);
+          this.selectedInventory.reset();
+        }
+      }
+    });
   }
 }

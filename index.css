@@ -19,6 +19,10 @@ body {
   position: relative;
 }
 
+.structure-ui {
+  background-color: white;
+}
+
 .hidden {
   visibility: hidden;
 }

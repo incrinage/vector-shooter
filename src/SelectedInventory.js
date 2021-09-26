@@ -1,6 +1,7 @@
 export default class SelectedInventory {
   constructor() {
     this.selectedItem = undefined;
+    this.ready = false;
   }
 
   getSelected() {
@@ -8,5 +9,10 @@ export default class SelectedInventory {
   }
   setSelected(s) {
     this.selectedItem = s;
+  }
+
+  reset() {
+    this.selectedItem = undefined;
+    this.ready = false;
   }
 }

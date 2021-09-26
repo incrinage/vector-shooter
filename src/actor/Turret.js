@@ -5,7 +5,7 @@ export default class Turret extends Actor {
   constructor(
     position = [0, 0, 0],
     velocity = [0, 0, 0],
-    radius = 5,
+    radius = 32,
     mass = radius
   ) {
     super(position, velocity, radius, mass);
@@ -20,6 +20,9 @@ export default class Turret extends Actor {
 
   getHeight() {
     return this.radius * 2;
+  }
+  setPosition([x, y]) {
+    super.setPosition([x + this.radius, y + this.radius]);
   }
 
   //returns a bullet with the assigned position

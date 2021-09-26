@@ -1,15 +1,16 @@
 export default class Button {
-  constructor([x = 0, y = 0], width, height) {
+  constructor([x = 0, y = 0], width, height, color, text) {
     this.position = [x, y];
     this.width = width;
     this.height = height;
-    this.color = "#a3e4f7";
-    this.text = "Inventory";
+    this.color = color;
+    this.text = text;
   }
 
   getWidth() {
     return this.width;
   }
+
   getHeight() {
     return this.height;
   }
@@ -27,7 +28,12 @@ export default class Button {
     ctx.fillStyle = this.color;
     ctx.fillRect(x, y, this.width, this.height);
 
+    this.renderText(ctx);
+  }
+
+  renderText(ctx) {
+    const [x, y] = this.position;
     ctx.strokeStyle = "black";
-    ctx.strokeText(this.text, x + 2, y + this.height / 2);
+    ctx.strokeText(this.text, x, y + this.getHeight() / 2);
   }
 }
