@@ -641,6 +641,8 @@
         cellLen * 16,
       ]);
 
+      this.selectedHighltColor = "green";
+
       //center coordinate system
       const [x, y] = this.origin;
       this.ctx.translate(x, y);
@@ -684,6 +686,14 @@
       this.clearScreen(x, y);
       const selected = this.selectedInventory.getSelected();
       if (selected && this.selectedInventory.ready) {
+        const [xp, yp] = selected.getPosition();
+        this.ctx.strokeStyle = this.selectedHighltColor;
+        this.ctx.strokeRect(
+          xp - selected.getWidth() / 2,
+          yp - selected.getHeight() / 2,
+          selected.getWidth(),
+          selected.getHeight()
+        );
         selected.render(this.ctx);
       }
 
@@ -755,6 +765,13 @@
       const updateSelectedItemPosition = (e) => {
         const selected = this.selectedInventory.getSelected();
         if (selected) {
+          const { isOccupied, isValid } =
+            getIsOccupiedAndIsValidAndCoordinates(selected);
+          if (isOccupied || !isValid) {
+            this.selectedHighltColor = "red";
+          } else {
+            this.selectedHighltColor = "green";
+          }
           selected.setPosition(
             this.grid.getGridCoordinate([mouseLocation.x, mouseLocation.y])
           );
@@ -801,6 +818,7 @@
         return result;
       };
 
+      //can be done in grid class
       const isOccupied = (coordinates) => {
         let result = false;
 
@@ -815,30 +833,39 @@
         return result;
       };
 
+      const getIsOccupiedAndIsValidAndCoordinates = (actor) => {
+        const gridLocation = this.grid.getGridCoordinate([
+          mouseLocation.x,
+          mouseLocation.y,
+        ]);
+
+        //can be called from Grid class
+        const coordinates = getOccupiedCells(
+          gridLocation,
+          actor.getWidth(),
+          actor.getHeight(),
+          this.grid.cellSideLength
+        );
+
+        //can be called from Grid class and return the invalid locations
+        let isValid = false;
+        coordinates.forEach((c) => {
+          if (this.grid.isValidGridCoordinate(c)) {
+            isValid = true;
+            return;
+          }
+        });
+
+        return { isOccupied: isOccupied(coordinates), isValid, coordinates };
+      };
+
       this.canvas.addEventListener("click", (e) => {
         const selected = this.selectedInventory.getSelected();
         if (selected) {
-          const gridLocation = this.grid.getGridCoordinate([
-            mouseLocation.x,
-            mouseLocation.y,
-          ]);
+          var { isOccupied, isValid, coordinates } =
+            getIsOccupiedAndIsValidAndCoordinates(selected);
 
-          const coordinates = getOccupiedCells(
-            gridLocation,
-            selected.getWidth(),
-            selected.getHeight(),
-            this.grid.cellSideLength
-          );
-
-          let isValid = false;
-          coordinates.forEach((c) => {
-            if (this.grid.isValidGridCoordinate(c)) {
-              isValid = true;
-              return;
-            }
-          });
-
-          if (!isOccupied(coordinates) && isValid) {
+          if (!isOccupied && isValid) {
             coordinates.forEach((c) => {
               this.grid.add(c, 0);
             });
