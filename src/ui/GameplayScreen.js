@@ -16,12 +16,11 @@ export default class GameplayScreen {
     this.origin = [0, 0];
     this.renderQueue = [];
     const cellLen = 32;
-    this.grid = new StructureGrid(cellLen, [
-      cellLen * -16,
-      cellLen * 16,
-      cellLen * -16,
-      cellLen * 16,
-    ]);
+    this.grid = new StructureGrid(
+      cellLen,
+      [cellLen * -16, cellLen * 16, cellLen * -16, cellLen * 16],
+      this.origin
+    );
 
     this.selectedHighltColor = "green";
 
@@ -67,7 +66,7 @@ export default class GameplayScreen {
     const [x, y] = this.origin;
     this.clearScreen(x, y);
     const selected = this.selectedInventory.getSelected();
-    if (selected && this.selectedInventory.ready) {
+    if (selected) {
       const [xp, yp] = selected.getPosition();
       this.ctx.strokeStyle = this.selectedHighltColor;
       this.ctx.strokeRect(
@@ -179,12 +178,7 @@ export default class GameplayScreen {
     this.canvas.addEventListener("mouseup", disableScreenPan);
     this.canvas.addEventListener("mousewheel", zoom);
     this.canvas.addEventListener("mousemove", panScreen);
-    this.canvas.addEventListener("mousemove", (e) => {
-      const selected = this.selectedInventory.getSelected();
-      if (selected) {
-        this.selectedInventory.ready = true;
-      }
-    });
+
     const getOccupiedCells = (coordinate, width, height, len) => {
       const [x, y] = coordinate;
 
@@ -230,10 +224,10 @@ export default class GameplayScreen {
       );
 
       //can be called from Grid class and return the invalid locations
-      let isValid = false;
+      let isValid = true;
       coordinates.forEach((c) => {
-        if (this.grid.isValidGridCoordinate(c)) {
-          isValid = true;
+        if (!this.grid.isValidGridCoordinate(c)) {
+          isValid = false;
           return;
         }
       });

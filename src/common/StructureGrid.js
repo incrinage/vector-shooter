@@ -1,7 +1,7 @@
 import angle from "../util/MathUtil";
 
 export default class StructureGrid {
-  constructor(cellSideLength = 1, boundaries = [-1, 2, -1, 2]) {
+  constructor(cellSideLength = 1, boundaries = [-1, 1, -1, 1], origin) {
     this.cellSideLength = cellSideLength;
     this.origin = origin;
     this.boundaries = boundaries;
@@ -48,7 +48,13 @@ export default class StructureGrid {
       return false;
     }
     const [left, right, top, bottom] = this.boundaries;
-    if (x < left || x > right || y < top || y > bottom) {
+
+    if (
+      x < left ||
+      x + this.cellSideLength > right ||
+      y < top ||
+      y + this.cellSideLength > bottom
+    ) {
       return false;
     }
 
@@ -83,5 +89,12 @@ export default class StructureGrid {
     return [xf - x0, yf - f0, angle([x0, y0], [xf, yf])];
   }
 
-  render(ctx) {}
+  render(ctx) {
+    const [x, y] = this.origin;
+    const [left, right, top, bottom] = this.boundaries;
+    const width = left - right;
+    const height = top - bottom;
+    ctx.strokeStyle = "black";
+    ctx.strokeRect(x - width / 2, y - width / 2, width, height);
+  }
 }

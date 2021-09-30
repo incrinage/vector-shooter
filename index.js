@@ -516,7 +516,6 @@
   class SelectedInventory {
     constructor() {
       this.selectedItem = undefined;
-      this.ready = false;
     }
 
     getSelected() {
@@ -528,12 +527,11 @@
 
     reset() {
       this.selectedItem = undefined;
-      this.ready = false;
     }
   }
 
   class StructureGrid {
-    constructor(cellSideLength = 1, boundaries = [-1, 2, -1, 2]) {
+    constructor(cellSideLength = 1, boundaries = [-1, 1, -1, 1], origin) {
       this.cellSideLength = cellSideLength;
       this.origin = origin;
       this.boundaries = boundaries;
@@ -580,7 +578,13 @@
         return false;
       }
       const [left, right, top, bottom] = this.boundaries;
-      if (x < left || x > right || y < top || y > bottom) {
+
+      if (
+        x < left ||
+        x + this.cellSideLength > right ||
+        y < top ||
+        y + this.cellSideLength > bottom
+      ) {
         return false;
       }
 
@@ -615,7 +619,14 @@
       return [xf - x0, yf - f0, angle$1([x0, y0], [xf, yf])];
     }
 
-    render(ctx) {}
+    render(ctx) {
+      const [x, y] = this.origin;
+      const [left, right, top, bottom] = this.boundaries;
+      const width = left - right;
+      const height = top - bottom;
+      ctx.strokeStyle = "black";
+      ctx.strokeRect(x - width / 2, y - width / 2, width, height);
+    }
   }
 
   class GameplayScreen {
@@ -634,12 +645,11 @@
       this.origin = [0, 0];
       this.renderQueue = [];
       const cellLen = 32;
-      this.grid = new StructureGrid(cellLen, [
-        cellLen * -16,
-        cellLen * 16,
-        cellLen * -16,
-        cellLen * 16,
-      ]);
+      this.grid = new StructureGrid(
+        cellLen,
+        [cellLen * -16, cellLen * 16, cellLen * -16, cellLen * 16],
+        this.origin
+      );
 
       this.selectedHighltColor = "green";
 
@@ -685,7 +695,7 @@
       const [x, y] = this.origin;
       this.clearScreen(x, y);
       const selected = this.selectedInventory.getSelected();
-      if (selected && this.selectedInventory.ready) {
+      if (selected) {
         const [xp, yp] = selected.getPosition();
         this.ctx.strokeStyle = this.selectedHighltColor;
         this.ctx.strokeRect(
@@ -797,12 +807,7 @@
       this.canvas.addEventListener("mouseup", disableScreenPan);
       this.canvas.addEventListener("mousewheel", zoom);
       this.canvas.addEventListener("mousemove", panScreen);
-      this.canvas.addEventListener("mousemove", (e) => {
-        const selected = this.selectedInventory.getSelected();
-        if (selected) {
-          this.selectedInventory.ready = true;
-        }
-      });
+
       const getOccupiedCells = (coordinate, width, height, len) => {
         const [x, y] = coordinate;
 
@@ -848,10 +853,10 @@
         );
 
         //can be called from Grid class and return the invalid locations
-        let isValid = false;
+        let isValid = true;
         coordinates.forEach((c) => {
-          if (this.grid.isValidGridCoordinate(c)) {
-            isValid = true;
+          if (!this.grid.isValidGridCoordinate(c)) {
+            isValid = false;
             return;
           }
         });
